@@ -1,161 +1,233 @@
 import sys
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
+from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, classification_report
 import joblib
 import os
+import json
+import logging
+from datetime import datetime
 
-def identify_target_column(data):
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def identify_target_column(data, target_column=None):
     """
-    Automatically identifies the most likely target column based on data characteristics.
-    Rules:
-    1. If 'target' or 'label' exists, use it
-    2. If there's a column with 'total' or 'sum' in its name, use it
-    3. If there's a column named 'annual' or containing year, use it
-    4. Otherwise, use the last numeric column
+    Identifies target column either automatically or uses specified column
+    
+    Args:
+        data: pandas DataFrame containing the dataset
+        target_column: Optional specified target column name
     """
-    # Convert column names to lowercase for easier matching
+    if target_column and target_column != 'auto':
+        if target_column not in data.columns:
+            raise ValueError(f"Specified target column '{target_column}' not found in dataset")
+        return target_column
+
+    # Automatic identification logic
     columns_lower = {col.lower(): col for col in data.columns}
     
-    # Rule 1: Check for explicit target columns
-    target_keywords = ['target', 'label', 'output', 'prediction']
+    target_keywords = ['target', 'label', 'output', 'prediction', 'class']
     for keyword in target_keywords:
         if keyword in columns_lower:
             return columns_lower[keyword]
     
-    # Rule 2: Check for total/sum columns
-    total_keywords = ['total', 'sum', 'final']
-    for keyword in total_keywords:
+    indicator_keywords = ['price', 'cost', 'revenue', 'sales', 'total', 'final']
+    for keyword in indicator_keywords:
         matches = [col for col in columns_lower.values() if keyword.lower() in col.lower()]
         if matches:
             return matches[0]
     
-    # Rule 3: Check for annual/yearly columns
-    time_keywords = ['annual', 'yearly', 'year']
-    for keyword in time_keywords:
-        matches = [col for col in columns_lower.values() if keyword.lower() in col.lower()]
-        if matches:
-            return matches[0]
-    
-    # Rule 4: Use the last numeric column
     numeric_columns = data.select_dtypes(include=['int64', 'float64']).columns
     if len(numeric_columns) > 0:
         return numeric_columns[-1]
     
-    raise ValueError("Could not automatically identify a suitable target column")
+    raise ValueError("Could not identify a suitable target column")
 
-def train_model(input_file, output_file):
+def determine_problem_type(y):
+    """Determines if this is a regression or classification problem"""
+    unique_values = len(np.unique(y[~pd.isna(y)]))  # Exclude NaN values when counting unique values
+    if unique_values <= 10 or y.dtype == 'object':
+        return 'classification'
+    return 'regression'
+
+def clean_dataset(X, y):
+    """
+    Clean the dataset by handling NaN values
+    
+    Args:
+        X: feature DataFrame
+        y: target Series
+    Returns:
+        cleaned X and y
+    """
+    # Log initial NaN statistics
+    initial_X_nans = X.isna().sum().sum()
+    initial_y_nans = y.isna().sum()
+    logger.info(f"Initial NaN count - Features: {initial_X_nans}, Target: {initial_y_nans}")
+    
+    # Remove rows where target is NaN
+    valid_indices = ~pd.isna(y)
+    X_cleaned = X[valid_indices]
+    y_cleaned = y[valid_indices]
+    
+    # Log cleaning results
+    logger.info(f"Removed {(~valid_indices).sum()} rows with NaN target values")
+    logger.info(f"Remaining samples: {len(y_cleaned)}")
+    
+    return X_cleaned, y_cleaned
+
+def train_model(input_file, output_file, target_column=None):
+    """
+    Trains and saves a machine learning model
+    
+    Args:
+        input_file: Path to input CSV file
+        output_file: Path to save trained model
+        target_column: Optional target column name (None for automatic selection)
+    """
     try:
-        # Load data
+        start_time = datetime.now()
+        
+        # Load and validate data
+        logger.info(f"Loading data from {input_file}")
         data = pd.read_csv(input_file)
-        print(f"Loaded data with shape: {data.shape}")
-        print(f"Columns: {data.columns.tolist()}")
+        if data.empty:
+            raise ValueError("Dataset is empty")
+            
+        # Identify target column
+        target = identify_target_column(data, target_column)
+        logger.info(f"Using target column: {target}")
         
-        # Automatically identify target column
-        target_column = identify_target_column(data)
-        print(f"Automatically selected target column: {target_column}")
+        # Prepare features and target
+        X = data.drop(columns=[target])
+        y = data[target]
         
-        # Identify numeric and categorical columns (excluding target)
-        feature_columns = [col for col in data.columns if col != target_column]
-        numeric_features = data[feature_columns].select_dtypes(include=['int64', 'float64']).columns
-        categorical_features = data[feature_columns].select_dtypes(include=['object']).columns
+        # Clean dataset
+        X, y = clean_dataset(X, y)
         
-        print(f"Numeric features: {numeric_features.tolist()}")
-        print(f"Categorical features: {categorical_features.tolist()}")
-        print(f"Target column: {target_column}")
-        print(f"Feature columns: {feature_columns}")
-
-        # Separate features and target
-        X = data[feature_columns]
-        y = data[target_column]
-
-        # Verify data types and handle any issues
-        print(f"Target column dtype: {y.dtype}")
-        if not np.issubdtype(y.dtype, np.number):
-            print("Warning: Target column is not numeric. Attempting to convert...")
-            y = pd.to_numeric(y, errors='coerce')
-            if y.isna().any():
-                raise ValueError("Target column contains non-numeric values that couldn't be converted")
-
-        # Create preprocessing pipelines
-        numeric_transformer = Pipeline(steps=[
+        if len(y) == 0:
+            raise ValueError("No valid samples remaining after cleaning")
+        
+        # Determine problem type
+        problem_type = determine_problem_type(y)
+        logger.info(f"Detected problem type: {problem_type}")
+        
+        # Prepare feature processors
+        numeric_features = X.select_dtypes(include=['int64', 'float64']).columns
+        categorical_features = X.select_dtypes(include=['object']).columns
+        
+        numeric_transformer = Pipeline([
             ('imputer', SimpleImputer(strategy='median')),
             ('scaler', StandardScaler())
         ])
 
-        categorical_transformer = Pipeline(steps=[
+        categorical_transformer = Pipeline([
             ('imputer', SimpleImputer(strategy='constant', fill_value='missing')),
-            ('onehot', OneHotEncoder(handle_unknown='ignore'))
+            ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
         ])
 
-        # Combine preprocessing steps
         preprocessor = ColumnTransformer(
             transformers=[
                 ('num', numeric_transformer, numeric_features),
                 ('cat', categorical_transformer, categorical_features)
             ])
 
-        # Create a preprocessing and modeling pipeline
-        model = Pipeline(steps=[
+        # Create appropriate model based on problem type
+        if problem_type == 'classification':
+            model = RandomForestClassifier(n_estimators=100, random_state=42)
+            if y.dtype == 'object':
+                y = LabelEncoder().fit_transform(y)
+        else:
+            model = RandomForestRegressor(n_estimators=100, random_state=42)
+
+        # Create and train pipeline
+        pipeline = Pipeline([
             ('preprocessor', preprocessor),
-            ('regressor', RandomForestRegressor(n_estimators=100, random_state=42))
+            ('model', model)
         ])
 
-        # Split the data
+        # Split data
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        
+        # Train model
+        logger.info("Training model...")
+        pipeline.fit(X_train, y_train)
+        
+        # Evaluate model
+        y_pred = pipeline.predict(X_test)
+        metrics = {}
+        
+        if problem_type == 'classification':
+            metrics['accuracy'] = accuracy_score(y_test, y_pred)
+            metrics['classification_report'] = classification_report(y_test, y_pred)
+            logger.info(f"Model accuracy: {metrics['accuracy']:.4f}")
+        else:
+            metrics['mse'] = mean_squared_error(y_test, y_pred)
+            metrics['r2'] = r2_score(y_test, y_pred)
+            logger.info(f"Model R² score: {metrics['r2']:.4f}")
 
-        # Fit the model
-        model.fit(X_train, y_train)
+        # Perform cross-validation
+        cv_scores = cross_val_score(pipeline, X, y, cv=5)
+        metrics['cv_mean'] = cv_scores.mean()
+        metrics['cv_std'] = cv_scores.std()
         
-        # Make predictions and calculate metrics
-        y_pred = model.predict(X_test)
-        mse = mean_squared_error(y_test, y_pred)
-        r2 = r2_score(y_test, y_pred)
-        print(f"Mean Squared Error: {mse}")
-        print(f"R-squared Score: {r2}")
-        
-        # Save the model
+        # Save model and metadata
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        joblib.dump(model, output_file)
-        print(f"Model saved to {output_file}")
-
-        # Return success status and metrics
+        joblib.dump(pipeline, output_file)
+        
+        # Save metadata
+        metadata = {
+            'target_column': target,
+            'problem_type': problem_type,
+            'features': list(X.columns),
+            'metrics': metrics,
+            'training_duration': str(datetime.now() - start_time),
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        metadata_file = output_file.replace('.pkl', '_metadata.json')
+        with open(metadata_file, 'w') as f:
+            json.dump(metadata, f, indent=2)
+        
+        # Save model data as CSV
+        csv_file = output_file.replace('.pkl', '.csv')
+        data.to_csv(csv_file, index=False)
+        
+        logger.info(f"Model, metadata, and CSV saved to {output_file}")
         return {
             'status': 'success',
-            'metrics': {
-                'mse': mse,
-                'r2': r2
-            },
-            'target_column': target_column
+            'metrics': metrics,
+            'metadata': metadata
         }
 
     except Exception as e:
-        print(f"Error: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
+        logger.error(f"Error during training: {str(e)}", exc_info=True)
         return {
             'status': 'error',
             'message': str(e)
         }
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python train_model.py <input_file> <output_file>")
+    if len(sys.argv) < 3:
+        print("Usage: python train_model.py <input_file> <output_file> [target_column]")
         sys.exit(1)
 
     input_file = sys.argv[1]
     output_file = sys.argv[2]
+    target_column = sys.argv[3] if len(sys.argv) > 3 else None
 
     if not os.path.exists(input_file):
         print(f"Error: Input file '{input_file}' does not exist.")
         sys.exit(1)
 
-    result = train_model(input_file, output_file)
+    result = train_model(input_file, output_file, target_column)
     if result['status'] == 'error':
         sys.exit(1)

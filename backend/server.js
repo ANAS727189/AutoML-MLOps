@@ -112,6 +112,18 @@ app.get('/api/download/:filename', (req, res) => {
   res.download(filePath);
 });
 
+// New endpoint to serve model CSV data
+app.get('/api/model-csv/:filename', (req, res) => {
+  const filePath = path.join('models', req.params.filename.replace('.pkl', '.csv'));
+  try {
+    const csvContent = fs.readFileSync(filePath, 'utf8');
+    res.header('Content-Type', 'text/csv');
+    res.send(csvContent);
+  } catch (error) {
+    res.status(404).json({ error: 'Model CSV file not found' });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
