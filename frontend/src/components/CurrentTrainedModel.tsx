@@ -56,7 +56,7 @@ export default function CurrentTrainedModel({ model, metrics, problemType, onDow
 
   const rows = csvContent.split('\n');
   const headers = rows[0].split(',');
-  const data = rows.slice(1, 6).map(row => row.split(','));  // Display only first 5 rows
+  const data = rows.slice(1, 6).map(row => row.split(',')); 
 
   const metricsData = [
     { name: 'Accuracy', value: metrics?.accuracy },

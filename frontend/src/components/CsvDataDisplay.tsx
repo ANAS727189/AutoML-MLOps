@@ -47,21 +47,22 @@ export default function CsvDataDisplay({ csvData, fileName }: CsvDataDisplayProp
   };
 
   return (
-    <Card className="w-full">
+    <Card className="w-full bg-slate-800 border-slate-700 shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between">
-        <h2 className="text-2xl font-semibold">Trained Model Data</h2>
-        <Button onClick={handleDownload} variant="outline" size="sm">
+        <h2 className="text-2xl font-semibold text-white">Trained Model Data</h2>
+        <Button onClick={handleDownload} variant="outline" size="sm" className="bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200">
           <Download className="mr-2 h-4 w-4" />
           Download CSV
         </Button>
       </CardHeader>
       <CardContent>
-        <div className="ag-theme-alpine" style={{ height: 400, width: '100%' }}>
+        <div className="ag-theme-alpine-dark" style={{ height: 400, width: '100%' }}>
           <AgGridReact
             columnDefs={columnDefs}
             rowData={rowData}
             pagination={true}
             paginationPageSize={10}
+            domLayout='autoHeight'
           />
         </div>
       </CardContent>

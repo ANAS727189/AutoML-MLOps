@@ -1,0 +1,32 @@
+{
+  "target_column": "Oct-Dec",
+  "problem_type": "regression",
+  "features": [
+    "STATE_UT_NAME",
+    "DISTRICT",
+    "JAN",
+    "FEB",
+    "MAR",
+    "APR",
+    "MAY",
+    "JUN",
+    "JUL",
+    "AUG",
+    "SEP",
+    "OCT",
+    "NOV",
+    "DEC",
+    "ANNUAL",
+    "Jan-Feb",
+    "Mar-May",
+    "Jun-Sep"
+  ],
+  "metrics": {
+    "mse": 213.95566572868273,
+    "r2": 0.9913232003474068,
+    "cv_mean": 0.8184111207246527,
+    "cv_std": 0.20313438433374972
+  },
+  "training_duration": "0:00:17.089261",
+  "timestamp": "2024-11-07T14:36:06.745294"
+}

@@ -39,24 +39,24 @@ const TrainingFlowChart = ({ step }: { step: number }) => {
   ];
 
   return (
-    <div className="mt-8 p-4 bg-white rounded-lg shadow">
-      <h3 className="text-lg font-semibold mb-4">Training Process</h3>
+    <div className="mt-8 p-4 bg-slate-800 rounded-lg shadow">
+      <h3 className="text-lg font-semibold mb-4 text-white">Training Process</h3>
       <div className="space-y-4">
         {steps.map((s, index) => (
           <motion.div
             key={s}
-            className={`p-2 rounded ${index <= step ? 'bg-blue-100' : 'bg-gray-100'}`}
+            className={`p-2 rounded ${index <= step ? 'bg-blue-600' : 'bg-slate-700'}`}
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: index * 0.1 }}
           >
             <motion.div
-              className={`h-2 rounded ${index <= step ? 'bg-blue-500' : 'bg-gray-300'}`}
+              className={`h-2 rounded ${index <= step ? 'bg-blue-400' : 'bg-slate-600'}`}
               initial={{ width: '0%' }}
               animate={{ width: index <= step ? '100%' : '0%' }}
               transition={{ duration: 0.5 }}
             />
-            <span className={index <= step ? 'text-blue-700' : 'text-gray-500'}>{s}</span>
+            <span className={index <= step ? 'text-blue-200' : 'text-slate-400'}>{s}</span>
           </motion.div>
         ))}
       </div>
@@ -200,53 +200,62 @@ export default function Functions() {
   }, [isTraining]);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">AutoML Functions</h1>
-      
-      {error && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+    <div className="min-h-screen bg-slate-950 text-white">
+      <div className="container mx-auto px-4 py-8">
+        <motion.h1 
+          className="text-3xl font-bold mb-8 bg-gradient-to-r from-blue-400 to-teal-400 bg-clip-text text-transparent"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          AutoML Functions
+        </motion.h1>
+        
+        {error && (
+          <Alert variant="destructive" className="mb-4 bg-red-900 border-red-700 text-white">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <TrainNewModel
-          onFileChange={handleFileChange}
-          onSubmit={handleSubmit}
-          isTraining={isTraining}
-          columns={columns}
-          selectedColumn={selectedColumn}
-          setSelectedColumn={setSelectedColumn}
-          isAutomatic={isAutomatic}
-          setIsAutomatic={setIsAutomatic}
-          trainingOutput={trainingOutput}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          <TrainNewModel
+            onFileChange={handleFileChange}
+            onSubmit={handleSubmit}
+            isTraining={isTraining}
+            columns={columns}
+            selectedColumn={selectedColumn}
+            setSelectedColumn={setSelectedColumn}
+            isAutomatic={isAutomatic}
+            setIsAutomatic={setIsAutomatic}
+            trainingOutput={trainingOutput}
+          />
 
-        {isTraining ? (
-          <TrainingFlowChart step={trainingStep} />
-        ) : (
-          csvContent && (
-            <CsvDataDisplay
-              csvData={csvContent}
-              fileName={newModel?.name || 'model_data.csv'}
-            />
-          )
+          {isTraining ? (
+            <TrainingFlowChart step={trainingStep} />
+          ) : (
+            csvContent && (
+              <CsvDataDisplay
+                csvData={csvContent}
+                fileName={newModel?.name || 'model_data.csv'}
+              />
+            )
+          )}
+        </div>
+
+        {newModel && (
+          <CurrentTrainedModel
+            model={newModel}
+            metrics={metrics}
+            problemType={problemType}
+            onDownload={handleDownload}
+            csvContent={csvContent}
+          />
+        )}
+        {previousModels.length > 0 && (
+          <PreviousModels models={previousModels} onDownload={handleDownload} />
         )}
       </div>
-
-      {newModel && (
-        <CurrentTrainedModel
-          model={newModel}
-          metrics={metrics}
-          problemType={problemType}
-          onDownload={handleDownload}
-          csvContent={csvContent}
-        />
-      )}
-      {previousModels.length > 0 && (
-        <PreviousModels models={previousModels} onDownload={handleDownload} />
-      )}
     </div>
   );
 }
