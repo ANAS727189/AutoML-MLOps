@@ -13,10 +13,16 @@ import os
 import json
 import logging
 from datetime import datetime
+import chardet
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+def detect_encoding(file_path):
+    with open(file_path, 'rb') as file:
+        raw_data = file.read()
+    return chardet.detect(raw_data)['encoding']
 
 def identify_target_column(data, target_column=None):
     """
@@ -96,9 +102,13 @@ def train_model(input_file, output_file, target_column=None):
     try:
         start_time = datetime.now()
         
+        # Detect file encoding
+        file_encoding = detect_encoding(input_file)
+        logger.info(f"Detected file encoding: {file_encoding}")
+
         # Load and validate data
         logger.info(f"Loading data from {input_file}")
-        data = pd.read_csv(input_file)
+        data = pd.read_csv(input_file, encoding=file_encoding)
         if data.empty:
             raise ValueError("Dataset is empty")
             

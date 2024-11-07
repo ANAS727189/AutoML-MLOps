@@ -65,7 +65,6 @@ app.post('/api/train', upload.single('file'), (req, res) => {
   const filePath = req.file.path;
   const outputPath = path.join('models', `${Date.now()}_model.pkl`);
   
-  // Store the original filename
   const originalFilename = req.file.originalname;
   const fileMetadata = {
     originalFilename,
@@ -75,6 +74,7 @@ app.post('/api/train', upload.single('file'), (req, res) => {
   const pythonProcess = spawn('python', ['train_model.py', filePath, outputPath]);
 
   let pythonOutput = '';
+  let pythonError = '';
 
   pythonProcess.stdout.on('data', (data) => {
     pythonOutput += data.toString();
@@ -82,26 +82,24 @@ app.post('/api/train', upload.single('file'), (req, res) => {
   });
 
   pythonProcess.stderr.on('data', (data) => {
+    pythonError += data.toString();
     console.error(`Python script error: ${data}`);
   });
 
   pythonProcess.on('close', (code) => {
     if (code !== 0) {
-      return res.status(500).json({ error: 'Error training model', output: pythonOutput });
+      return res.status(500).json({ error: 'Error training model', output: pythonOutput, errorOutput: pythonError });
     }
     
-    // Save metadata along with the model
     const metadataPath = outputPath.replace('.pkl', '_metadata.json');
-    fs.writeFileSync(metadataPath, JSON.stringify({
-      ...fileMetadata,
-      trainingOutput: pythonOutput,
-      completedAt: Date.now()
-    }));
+    const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
 
     res.json({ 
       message: 'Model trained successfully', 
       modelPath: outputPath,
-      output: pythonOutput 
+      output: pythonOutput,
+      metrics: metadata.metrics,
+      problemType: metadata.problem_type
     });
   });
 });

@@ -8,6 +8,7 @@ import TrainNewModel from '@/components/TrainNewModel';
 import CurrentTrainedModel from '@/components/CurrentTrainedModel';
 import PreviousModels from '@/components/PreviousModels';
 import CsvDataDisplay from '@/components/CsvDataDisplay';
+import { motion } from 'framer-motion';
 
 interface ModelInfo {
   name: string;
@@ -19,12 +20,49 @@ interface ModelInfo {
 }
 
 interface Metrics {
-  accuracy: number;
-  mse: number;
-  r2: number;
-  cv_mean: number;
-  cv_std: number;
+  accuracy?: number;
+  mse?: number;
+  r2?: number;
+  cv_mean?: number;
+  cv_std?: number;
+  classification_report?: string;
 }
+
+const TrainingFlowChart = ({ step }: { step: number }) => {
+  const steps = [
+    'Data Preprocessing',
+    'Feature Engineering',
+    'Model Selection',
+    'Training',
+    'Evaluation',
+    'Finalization'
+  ];
+
+  return (
+    <div className="mt-8 p-4 bg-white rounded-lg shadow">
+      <h3 className="text-lg font-semibold mb-4">Training Process</h3>
+      <div className="space-y-4">
+        {steps.map((s, index) => (
+          <motion.div
+            key={s}
+            className={`p-2 rounded ${index <= step ? 'bg-blue-100' : 'bg-gray-100'}`}
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: index * 0.1 }}
+          >
+            <motion.div
+              className={`h-2 rounded ${index <= step ? 'bg-blue-500' : 'bg-gray-300'}`}
+              initial={{ width: '0%' }}
+              animate={{ width: index <= step ? '100%' : '0%' }}
+              transition={{ duration: 0.5 }}
+            />
+            <span className={index <= step ? 'text-blue-700' : 'text-gray-500'}>{s}</span>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export default function Functions() {
   const [file, setFile] = useState<File | null>(null);
@@ -37,15 +75,10 @@ export default function Functions() {
   const [columns, setColumns] = useState<string[]>([]);
   const [selectedColumn, setSelectedColumn] = useState<string>('');
   const [isAutomatic, setIsAutomatic] = useState(true);
-  const [chartData, setChartData] = useState<any[]>([]);
   const [csvContent, setCsvContent] = useState<string>('');
-  const [metrics, setMetrics] = useState<Metrics>({
-    accuracy: 0,
-    mse: 0,
-    r2: 0,
-    cv_mean: 0,
-    cv_std: 0
-  });
+  const [metrics, setMetrics] = useState<Metrics>({});
+  const [problemType, setProblemType] = useState<string>('');
+  const [trainingStep, setTrainingStep] = useState(-1);
   const router = useRouter();
 
   useEffect(() => {
@@ -72,7 +105,6 @@ export default function Functions() {
       const selectedFile = event.target.files[0];
       setFile(selectedFile);
 
-      // Read CSV headers to get columns
       const reader = new FileReader();
       reader.onload = (e) => {
         const text = e.target?.result as string;
@@ -89,6 +121,7 @@ export default function Functions() {
 
     setIsTraining(true);
     setError(null);
+    setTrainingStep(0);
     const formData = new FormData();
     formData.append('file', file);
     formData.append('targetColumn', isAutomatic ? 'auto' : selectedColumn);
@@ -106,7 +139,6 @@ export default function Functions() {
       const data = await response.json();
       setTrainingOutput(data.output);
       
-      // Set the newly trained model
       if (data.modelPath) {
         const newModelInfo: ModelInfo = {
           name: data.modelPath.split('/').pop() || '',
@@ -117,9 +149,9 @@ export default function Functions() {
           isNew: true
         };
         setNewModel(newModelInfo);
-        setMetrics(data.metrics);  // Add this line
+        setMetrics(data.metrics);
+        setProblemType(data.problemType);
         
-        // Fetch CSV content for the newly trained model
         fetchCsvContent(newModelInfo.name);
       }
       
@@ -129,6 +161,7 @@ export default function Functions() {
       setError('Failed to train model. Please try again later.');
     } finally {
       setIsTraining(false);
+      setTrainingStep(-1);
     }
   };
 
@@ -157,6 +190,15 @@ export default function Functions() {
     }
   };
 
+  useEffect(() => {
+    if (isTraining) {
+      const interval = setInterval(() => {
+        setTrainingStep((prev) => (prev + 1) % 6);
+      }, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [isTraining]);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">AutoML Functions</h1>
@@ -181,22 +223,27 @@ export default function Functions() {
           trainingOutput={trainingOutput}
         />
 
-        {newModel && csvContent && (
-          <CsvDataDisplay
-            csvData={csvContent}
-            fileName={newModel.name}
-          />
+        {isTraining ? (
+          <TrainingFlowChart step={trainingStep} />
+        ) : (
+          csvContent && (
+            <CsvDataDisplay
+              csvData={csvContent}
+              fileName={newModel?.name || 'model_data.csv'}
+            />
+          )
         )}
       </div>
 
       {newModel && (
-  <CurrentTrainedModel
-    model={newModel}
-    metrics={metrics}
-    onDownload={handleDownload}
-    csvContent={csvContent}
-  />
-)}
+        <CurrentTrainedModel
+          model={newModel}
+          metrics={metrics}
+          problemType={problemType}
+          onDownload={handleDownload}
+          csvContent={csvContent}
+        />
+      )}
       {previousModels.length > 0 && (
         <PreviousModels models={previousModels} onDownload={handleDownload} />
       )}

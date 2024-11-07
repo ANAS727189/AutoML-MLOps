@@ -4,7 +4,7 @@ import React from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, Download, Eye } from 'lucide-react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import {
   Dialog,
   DialogContent,
@@ -35,13 +35,14 @@ interface Metrics {
 interface CurrentTrainedModelProps {
   model: ModelInfo;
   metrics: Metrics;
+  problemType: string;
   onDownload: (model: ModelInfo) => void;
   csvContent: string;
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
-export default function CurrentTrainedModel({ model, metrics, onDownload, csvContent }: CurrentTrainedModelProps) {
+export default function CurrentTrainedModel({ model, metrics, problemType, onDownload, csvContent }: CurrentTrainedModelProps) {
   const formatSize = (bytes: number) => {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     if (bytes === 0) return '0 Byte';
@@ -58,16 +59,16 @@ export default function CurrentTrainedModel({ model, metrics, onDownload, csvCon
   const data = rows.slice(1, 6).map(row => row.split(','));  // Display only first 5 rows
 
   const metricsData = [
-    { name: 'Accuracy', value: metrics?.accuracy || 0 },
-    { name: 'R2 Score', value: metrics?.r2 || 0 },
-    { name: 'MSE', value: metrics?.mse || 0 },
-    { name: 'CV Mean', value: metrics?.cv_mean || 0 },
-  ];
+    { name: 'Accuracy', value: metrics?.accuracy },
+    { name: 'R2 Score', value: metrics?.r2 },
+    { name: 'MSE', value: metrics?.mse },
+    { name: 'CV Mean', value: metrics?.cv_mean },
+  ].filter(item => item.value !== undefined);
 
   const cvData = [
     { name: 'CV Mean', value: metrics?.cv_mean },
     { name: 'CV Std', value: metrics?.cv_std },
-  ];
+  ].filter(item => item.value !== undefined);
 
   return (
     <Card className="mt-8">
@@ -85,6 +86,7 @@ export default function CurrentTrainedModel({ model, metrics, onDownload, csvCon
               <div className="text-sm text-slate-500 mt-1">
                 <div>Size: {formatSize(model.size)}</div>
                 <div>Created: {formatDate(model.created)}</div>
+                <div>Problem Type: {problemType}</div>
               </div>
             </div>
             <Button 
@@ -98,42 +100,47 @@ export default function CurrentTrainedModel({ model, metrics, onDownload, csvCon
         </div>
         
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Model Metrics</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={metricsData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="value" fill="#8884d8" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {metricsData.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Model Metrics</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={metricsData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="value" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
           
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Cross-Validation Results</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={cvData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                >
-                  {cvData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+          {cvData.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Cross-Validation Results</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={cvData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: ${value.toFixed(4)}`}
+                  >
+                    {cvData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
 
         {metrics?.classification_report && (
