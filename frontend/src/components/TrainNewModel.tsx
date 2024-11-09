@@ -55,7 +55,7 @@ export default function TrainNewModel({
           <h2 className="text-2xl font-semibold text-white">Train New Model</h2>
         </CardHeader>
         <CardContent>
-          <form onSubmit={onSubmit} className="space-y-4">
+          <form onSubmit={onSubmit} className="space-y-6">
             <div>
               <Input 
                 type="file" 
@@ -65,13 +65,13 @@ export default function TrainNewModel({
               />
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
+            <div className="space-y-1">
+              <div className="flex flex-row justify-between space-x-2">
                 <Button
                   type="button"
                   variant={isAutomatic ? "default" : "outline"}
                   onClick={() => setIsAutomatic(true)}
-                  className={`${isAutomatic ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-700 hover:bg-slate-600'} text-white transition-colors duration-200`}
+                  className={`${isAutomatic ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-700 hover:bg-slate-600'} text-white transition-colors duration-200 px-8`}
                 >
                   Automatic Target Selection
                 </Button>
@@ -79,7 +79,7 @@ export default function TrainNewModel({
                   type="button"
                   variant={!isAutomatic ? "default" : "outline"}
                   onClick={() => setIsAutomatic(false)}
-                  className={`${!isAutomatic ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-700 hover:bg-slate-600'} text-white transition-colors duration-200`}
+                  className={`${!isAutomatic ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-700 hover:bg-slate-600'} text-white transition-colors duration-200 px-8`}
                 >
                   Manual Target Selection
                 </Button>

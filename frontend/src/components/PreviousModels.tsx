@@ -50,7 +50,7 @@ export default function PreviousModels({ models, onDownload }: PreviousModelsPro
   ];
 
   return (
-    <Card className="lg:col-span-2">
+    <Card className="lg:col-span-2 bg-slate-200">
       <CardHeader>
         <h2 className="text-2xl font-semibold">Previous Models</h2>
       </CardHeader>
