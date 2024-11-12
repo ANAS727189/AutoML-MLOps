@@ -36,8 +36,8 @@ export default function Header() {
   }, []);
 
   const navItems = [
-    { href: '/data-upload', label: 'Data Upload' },
-    { href: '/model-training', label: 'Model Training' },
+    { href: '/functions', label: 'Model Training' },
+    { href: '/visual', label: 'Data Visulization' },
     { href: '/predict', label: 'Predictions' },
   ];
 

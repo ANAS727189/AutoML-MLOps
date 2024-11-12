@@ -100,7 +100,7 @@ export default function MainContent() {
               <div className="space-y-6">
                 <div className="flex items-center justify-center gap-2">
                   <span className="px-4 py-2 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 backdrop-blur-sm opacity-0 -translate-y-4 animate-[fadeInDown_0.6s_ease-out_0.2s_forwards]">
-                    ✨ New Release v1.0
+                    ✨ New Release v2.0
                   </span>
                 </div>
                 <h1 className="text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 leading-tight tracking-tight">

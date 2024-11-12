@@ -4,6 +4,8 @@ import { spawn } from 'child_process';
 import path from 'path'; 
 import fs from 'fs';
 import cors from 'cors';
+import Papa from 'papaparse';
+
 
 const app = express();
 const upload = multer({ dest: 'uploads/' });
@@ -156,6 +158,12 @@ app.post('/api/predict/:model_filename', async (req, res) => {
     await fss.writeFile(inputPath, JSON.stringify(inputData));
     // Create promise to handle Python process
     const prediction = await new Promise((resolve, reject) => {
+
+      //["python", "-m", "venv", "sklearn_1_3_2_env"],
+    // ["source", "sklearn_1_3_2_env/bin/activate"],
+    // ["pip", "install", "scikit-learn==1.3.2", "pandas", "joblib"],
+    // pip install pandas matplotlib seaborn
+
       const pythonProcess = spawn('python', ['predict.py', modelPath, inputPath]);
 
       let pythonOutput = '';
@@ -232,6 +240,59 @@ app.get('/api/model-features/:model_filename', (req, res) => {
   }
 });
 
+
+app.get('/api/csv-data/:filename', async (req, res) => {
+  try {
+    const filePath = path.join('models', req.params.filename.replace('.pkl', '.csv'));
+    const fileContent = await fss.readFile(filePath, 'utf8');
+    const parsedData = Papa.parse(fileContent, { header: true });
+    res.json(parsedData.data);
+  } catch (error) {
+    res.status(404).json({ error: 'CSV file not found' });
+  }
+});
+
+// New endpoint for generating graphs
+app.get('/api/generate-graph/:filename', async (req, res) => {
+  try {
+    const { filename } = req.params;
+    const { graphType, xColumn, yColumn } = req.query;
+
+    if (!graphType || !xColumn || !yColumn) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    const csvPath = path.join('models', filename.replace('.pkl', '.csv'));
+
+    const pythonProcess = spawn('python', ['generate_graph.py', csvPath, graphType, xColumn, yColumn]);
+
+    let pythonOutput = '';
+    let pythonError = '';
+
+    pythonProcess.stdout.on('data', (data) => {
+      pythonOutput += data.toString();
+    });
+
+    pythonProcess.stderr.on('data', (data) => {
+      pythonError += data.toString();
+    });
+
+    pythonProcess.on('close', (code) => {
+      if (code !== 0) {
+        return res.status(500).json({ error: 'Error generating graph', errorOutput: pythonError });
+      }
+
+      try {
+        const result = JSON.parse(pythonOutput);
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ error: 'Error parsing Python output', errorOutput: pythonOutput });
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
