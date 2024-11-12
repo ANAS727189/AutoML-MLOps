@@ -9,6 +9,7 @@ import CurrentTrainedModel from '@/components/CurrentTrainedModel';
 import PreviousModels from '@/components/PreviousModels';
 import CsvDataDisplay from '@/components/CsvDataDisplay';
 import { motion } from 'framer-motion';
+import DataVisualization from '@/components/DraggableChart';
 
 interface ModelInfo {
   name: string;
@@ -244,13 +245,16 @@ export default function Functions() {
         </div>
 
         {newModel && (
-          <CurrentTrainedModel
-            model={newModel}
-            metrics={metrics}
-            problemType={problemType}
-            onDownload={handleDownload}
-            csvContent={csvContent}
-          />
+          <div>
+            <CurrentTrainedModel
+              model={newModel}
+              metrics={metrics}
+              problemType={problemType}
+              onDownload={handleDownload}
+              csvContent={csvContent}
+            />
+          </div>
+      
         )}
         {previousModels.length > 0 && (
           <PreviousModels models={previousModels} onDownload={handleDownload} />

@@ -61,10 +61,10 @@ export default function CsvDataDisplay({ csvData, fileName }: CsvDataDisplayProp
             columnDefs={columnDefs}
             rowData={rowData}
             pagination={true}
-            paginationPageSize={10}
+            paginationPageSize={5}
             domLayout='autoHeight'
           />
-        </div>
+        </div> 
       </CardContent>
     </Card>
   );
