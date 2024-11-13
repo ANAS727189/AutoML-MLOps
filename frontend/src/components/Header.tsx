@@ -37,7 +37,7 @@ export default function Header() {
 
   const navItems = [
     { href: '/functions', label: 'Model Training' },
-    { href: '/visual', label: 'Data Visulization' },
+    { href: '/visual', label: 'Data Visualization' },
     { href: '/predict', label: 'Predictions' },
   ];
 
