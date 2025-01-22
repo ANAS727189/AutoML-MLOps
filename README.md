@@ -14,6 +14,9 @@
 </div>
 
 ---
+<div align="center">
+  <video src="AutoML-OPS-Summary.mp4" controls></video>
+</div>
 
 ## ✨ Features
 
