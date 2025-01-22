@@ -15,8 +15,11 @@
 
 ---
 <div align="center">
-  <video src="AutoML-OPS-Summary.mp4" controls></video>
+  <a href="https://www.youtube.com/watch?v=ZtnahAf6fks">
+    <img src="https://img.youtube.com/vi/ZtnahAf6fks/hqdefault.jpg" alt="AutoML-MLOps Demo" />
+  </a>
 </div>
+
 
 ## ✨ Features
 
