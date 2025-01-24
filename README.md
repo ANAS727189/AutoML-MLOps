@@ -14,6 +14,12 @@
 </div>
 
 ---
+<div align="center">
+  <a href="https://www.youtube.com/watch?v=ZtnahAf6fks">
+    <img src="https://img.youtube.com/vi/ZtnahAf6fks/hqdefault.jpg" alt="AutoML-MLOps Demo" />
+  </a>
+</div>
+
 
 ## ✨ Features
 
@@ -105,7 +111,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 
-### Made with ❤️ by the AutoML-MLOps Team
 
 [Report Bug](https://github.com/yourusername/AutoML-MLOps/issues) · [Request Feature](https://github.com/yourusername/AutoML-MLOps/issues)
 
