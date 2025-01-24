@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
@@ -34,20 +34,53 @@ export default function PreviousModels({ models, onDownload }: PreviousModelsPro
     return new Date(dateString).toLocaleString();
   };
 
-  const columnDefs = [
-    { headerName: 'Name', field: 'name' as keyof ModelInfo },
-    { headerName: 'Size', field: 'size' as keyof ModelInfo, valueFormatter: (params: any) => formatSize(params.value) },
-    { headerName: 'Created', field: 'created' as keyof ModelInfo, valueFormatter: (params: any) => formatDate(params.value) },
-    { headerName: 'Last Modified', field: 'lastModified' as keyof ModelInfo, valueFormatter: (params: any) => formatDate(params.value) },
+  const defaultColDef = useMemo(() => ({
+    sortable: true,
+    filter: true,
+    resizable: true,
+    minWidth: 100,
+    flex: 1
+  }), []);
+
+  const columnDefs = useMemo(() => [
+    { 
+      headerName: 'Name', 
+      field: 'name' as keyof ModelInfo,
+      flex: 2
+    },
+    { 
+      headerName: 'Size', 
+      field: 'size' as keyof ModelInfo,
+      valueFormatter: (params: any) => formatSize(params.value),
+      flex: 1 
+    },
+    { 
+      headerName: 'Created', 
+      field: 'created' as keyof ModelInfo,
+      valueFormatter: (params: any) => formatDate(params.value),
+      flex: 1.5
+    },
+    { 
+      headerName: 'Last Modified', 
+      field: 'lastModified' as keyof ModelInfo,
+      valueFormatter: (params: any) => formatDate(params.value),
+      flex: 1.5
+    },
     {
       headerName: 'Actions',
+      width: 100,
       cellRenderer: (params: any) => (
-        <Button variant="outline" size="sm" onClick={() => onDownload(params.data)}>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => onDownload(params.data)}
+          className="w-full"
+        >
           <Download className="h-4 w-4" />
         </Button>
       )
     }
-  ];
+  ], [onDownload]);
 
   return (
     <Card className="lg:col-span-2 bg-slate-200">
@@ -59,8 +92,13 @@ export default function PreviousModels({ models, onDownload }: PreviousModelsPro
           <AgGridReact
             columnDefs={columnDefs}
             rowData={models}
+            defaultColDef={defaultColDef}
             pagination={true}
             paginationPageSize={10}
+            onGridReady={(params) => {
+              params.api.sizeColumnsToFit();
+            }}
+            suppressMovableColumns={true}
           />
         </div>
       </CardContent>

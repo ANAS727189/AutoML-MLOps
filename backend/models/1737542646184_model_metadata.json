@@ -1,0 +1,19 @@
+{
+  "target_column": "Follows_Per_Day",
+  "problem_type": "regression",
+  "features": [
+    "User_ID",
+    "App",
+    "Daily_Minutes_Spent",
+    "Posts_Per_Day",
+    "Likes_Per_Day"
+  ],
+  "metrics": {
+    "mse": 256.1271045,
+    "r2": -0.04083125414309907,
+    "cv_mean": -0.13575194062449328,
+    "cv_std": 0.054200877836060604
+  },
+  "training_duration": "0:00:23.992446",
+  "timestamp": "2025-01-22T16:14:39.824353"
+}

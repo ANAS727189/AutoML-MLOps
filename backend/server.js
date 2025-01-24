@@ -236,45 +236,94 @@ res.status(404).json({ error: 'CSV file not found' });
 
 // New endpoint for generating graphs
 app.get('/api/generate-graph/:filename', async (req, res) => {
-try {
-const { filename } = req.params;
-const { graphType, xColumn, yColumn } = req.query;
+    try {
+        const { filename } = req.params;
+        const { graphType, xColumn, yColumn } = req.query;
 
-if (!graphType || !xColumn || !yColumn) {
-return res.status(400).json({ error: 'Missing required parameters' });
-}
+        if (!graphType || !xColumn || !yColumn) {
+            return res.status(400).json({ 
+                status: 'error',
+                message: 'Missing required parameters',
+                details: { graphType, xColumn, yColumn }
+            });
+        }
 
-const csvPath = path.join('models', filename.replace('.pkl', '.csv'));
+        const csvPath = path.join('models', filename.replace('.pkl', '.csv'));
+        
+        // Verify file exists
+        try {
+            await fss.access(csvPath);
+        } catch (err) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'CSV file not found',
+                details: { csvPath }
+            });
+        }
 
-const pythonProcess = spawn('python3', ['generate_graph.py', csvPath, graphType, xColumn, yColumn]);
+        return new Promise((resolve, reject) => {
+            const pythonProcess = spawn('python3', [
+                'generate_graph.py',
+                csvPath,
+                graphType,
+                xColumn,
+                yColumn
+            ]);
 
-let pythonOutput = '';
-let pythonError = '';
+            let stdout = '';
+            let stderr = '';
 
-pythonProcess.stdout.on('data', (data) => {
-pythonOutput += data.toString();
+            pythonProcess.stdout.on('data', (data) => {
+                stdout += data.toString();
+            });
+
+            pythonProcess.stderr.on('data', (data) => {
+                stderr += data.toString();
+            });
+
+            pythonProcess.on('close', (code) => {
+                if (code !== 0) {
+                    console.error('Python script error:', stderr);
+                    return res.status(500).json({
+                        status: 'error',
+                        message: 'Graph generation failed',
+                        details: stderr
+                    });
+                }
+
+                try {
+                    const result = JSON.parse(stdout);
+                    return res.json(result);
+                } catch (error) {
+                    console.error('Error parsing Python output:', error);
+                    return res.status(500).json({
+                        status: 'error',
+                        message: 'Error parsing Python output',
+                        details: { stdout, stderr }
+                    });
+                }
+            });
+
+            pythonProcess.on('error', (error) => {
+                console.error('Failed to start Python process:', error);
+                return res.status(500).json({
+                    status: 'error',
+                    message: 'Failed to start Python process',
+                    details: error.message
+                });
+            });
+        });
+
+    } catch (error) {
+        console.error('Server error:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'Internal server error',
+            details: error.message
+        });
+    }
 });
 
-pythonProcess.stderr.on('data', (data) => {
-pythonError += data.toString();
-});
-
-pythonProcess.on('close', (code) => {
-if (code !== 0) {
-return res.status(500).json({ error: 'Error generating graph', errorOutput: pythonError });
-}
-
-try {
-const result = JSON.parse(pythonOutput);
-res.json(result);
-} catch (error) {
-res.status(500).json({ error: 'Error parsing Python output', errorOutput: pythonOutput });
-}
-});
-} catch (error) {
-res.status(500).json({ error: 'Internal server error', message: error.message });
-}
-});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
